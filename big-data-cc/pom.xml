@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>fr.dawan.paris</groupId>
+  <artifactId>big-data-cc</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>big-data-cc</name>
+  <description>Contrôle continu Big Data — Sobriété énergétique</description>
+
+  <build>
+    <!-- Nom du livrable final exigé -->
+    <finalName>controle-continu-bd</finalName>
+
+    <plugins>
+      <!-- Compiler en Java 11 (via properties ci-dessous) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
+        </configuration>
+      </plugin>
+
+      <!-- Exécuter le projet via Maven -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <!-- Classe principale demandée pour la Q2 -->
+          <mainClass>big.data.cc.AppMain</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <!-- Propriétés demandées -->
+  <properties>
+    <java.version>11</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <!-- Dépendances Spark SQL 3.5.1 (Scala 2.12) -->
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-sql_2.12</artifactId>
+      <version>3.5.1</version>
+    </dependency>
+    <!-- (Supprimé : slf4j-simple pour éviter les doublons de binders SLF4J) -->
+  </dependencies>
+</project>
