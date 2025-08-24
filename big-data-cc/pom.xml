@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>fr.dawan.paris</groupId>
@@ -12,12 +12,63 @@
   <name>big-data-cc</name>
   <description>Contrôle continu Big Data — Sobriété énergétique</description>
 
+  <properties>
+    <java.version>11</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-sql_2.12</artifactId>
+      <version>3.5.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.7.4</version>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <profile>
+      <id>main</id>
+      <activation><activeByDefault>true</activeByDefault></activation>
+      <properties><app.main>big.data.cc.AppMain</app.main></properties>
+    </profile>
+    <profile><id>q1</id><properties><app.main>big.data.cc.AppQ1</app.main></properties></profile>
+    <profile><id>q2</id><properties><app.main>big.data.cc.AppQ2</app.main></properties></profile>
+    <profile><id>q3</id><properties><app.main>big.data.cc.AppQ3</app.main></properties></profile>
+    <profile><id>q4</id><properties><app.main>big.data.cc.AppQ4</app.main></properties></profile>
+    <profile><id>q5</id><properties><app.main>big.data.cc.AppQ5</app.main></properties></profile>
+  </profiles>
+
   <build>
-    <!-- Nom du livrable final exigé -->
     <finalName>controle-continu-bd</finalName>
 
     <plugins>
-      <!-- Compiler en Java 11 (via properties ci-dessous) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>enforce-java</id>
+            <goals><goal>enforce</goal></goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[11,12)</version>
+                  <message>Ce projet doit être exécuté avec Java 11.</message>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -28,34 +79,34 @@
         </configuration>
       </plugin>
 
-      <!-- Exécuter le projet via Maven -->
+      <!-- Exécution : on construit la commande Java nous‑mêmes (exec:exec) -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.3.0</version>
         <configuration>
-          <!-- Classe principale demandée pour la Q2 -->
-          <mainClass>big.data.cc.AppMain</mainClass>
+          <!-- Utilise la JVM de Maven (celle affichée par `mvn -v`) -->
+          <executable>${java.home}/bin/java</executable>
+
+          <!-- Ligne de commande équivalente à :
+               java (option add-exports pour NIO direct) -cp <classpath> ${app.main} -->
+          <arguments>
+            <argument>--add-exports=java.base/sun.nio.ch=ALL-UNNAMED</argument>
+            <argument>-cp</argument>
+            <classpath/>
+            <argument>${app.main}</argument>
+          </arguments>
+
+          <includeProjectDependencies>true</includeProjectDependencies>
+          <classpathScope>runtime</classpathScope>
+          <cleanupDaemonThreads>false</cleanupDaemonThreads>
         </configuration>
+        <executions>
+          <execution>
+            <goals><goal>exec</goal></goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
-
-  <!-- Propriétés demandées -->
-  <properties>
-    <java.version>11</java.version>
-    <maven.compiler.source>${java.version}</maven.compiler.source>
-    <maven.compiler.target>${java.version}</maven.compiler.target>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <!-- Dépendances Spark SQL 3.5.1 (Scala 2.12) -->
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_2.12</artifactId>
-      <version>3.5.1</version>
-    </dependency>
-    <!-- (Supprimé : slf4j-simple pour éviter les doublons de binders SLF4J) -->
-  </dependencies>
 </project>

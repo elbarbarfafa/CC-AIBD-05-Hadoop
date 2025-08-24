@@ -1,17 +1,19 @@
 package big.data.cc;
 
+import static org.apache.spark.sql.functions.col;
+
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
+import java.text.Normalizer;                 // <-- ajouté
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
@@ -20,8 +22,8 @@ import java.util.Properties;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class EnedisDataSet {
-	
-	private static final Logger log = LoggerFactory.getLogger(EnedisDataSet.class);
+
+    private static final Logger log = LoggerFactory.getLogger(EnedisDataSet.class);
 
     // === Q3: stockage des requêtes externalisées ===
     private static Properties props;
@@ -76,6 +78,7 @@ public class EnedisDataSet {
 
         return viewName;
     }
+
     public static Dataset<Row> load(SparkSession spark, String csvUrl, String tableName) {
         try {
             // 1) Télécharger vers un fichier temporaire local
@@ -135,6 +138,64 @@ public class EnedisDataSet {
         long count = df.count();
         log.info("Nombre de lignes: {}", count);
     }
-	
 
+    // ===== helper pour générer des noms de vues sûrs (sans accents / caractères spéciaux)
+    private static String sanitizeName(String raw) {
+        String nfd = Normalizer.normalize(raw, Normalizer.Form.NFD)
+                               .replaceAll("\\p{M}+", "");      // supprime les diacritiques
+        String s = nfd.toLowerCase()
+                      .replace(' ', '_')
+                      .replaceAll("[^a-z0-9_]", "_");          // tout le reste -> "_"
+        if (s.isEmpty() || !Character.isLetter(s.charAt(0))) s = "t_" + s; // évite début non lettre
+        return s;
+    }
+
+    /**
+     * Q4 — Version API Java (pas SQL).
+     * Pour une catégorie (ex: "Résidentiels"), renvoie les semaines (période ref)
+     * où la conso réalisée < conso normale, triées par date_fin croissante.
+     * Le résultat est aussi publié comme vue temporaire "result_api_<cat>".
+     */
+    public static Dataset<Row> optimizedCompute(SparkSession spark, Dataset<Row> base, String categorie) {
+        // Colonnes du dataset (d’après ton schéma réel)
+        Column seg  = col("`Segment client`");
+        Column date = col("date_fin");
+        Column week = col("week");
+        Column tr   = col("conso_lissee_tr_ref");
+        Column tn   = col("conso_lissee_tn_ref");
+
+        Dataset<Row> res = base
+                .filter(seg.equalTo(categorie).and(tr.lt(tn)))
+                .select(
+                        date,
+                        week,
+                        seg.alias("segment"),
+                        tr.alias("conso_tr"),
+                        tn.alias("conso_tn")
+                )
+                .orderBy(date.asc())
+                .cache(); // on matérialise pour mesures et réutilisation
+
+        // *** correction : vue sans accents/espaces/caractères interdits
+        String view = "result_api_" + sanitizeName(categorie);
+        res.createOrReplaceTempView(view);
+
+        // petit log d’aperçu
+        String preview = res.showString(20, 0, false);
+        log.info("Vue '{}' créée (API Java). Aperçu:\n{}", view, preview);
+        log.info("Vue '{}' - nombre de lignes (API Java): {}", view, res.count());
+
+        return res;
+    }
+
+	public static void saveToPostgres(Dataset<Row> out, String jdbcUrl, String jdbcTab, String jdbcUser,
+			String jdbcPass) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public static Dataset<Row> loadMeteoCsv(SparkSession spark, String meteoUrl, String meteoView) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
